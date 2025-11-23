@@ -3,13 +3,14 @@ import Header from './components/Header';
 import InputPanel from './components/InputPanel';
 import SceneTimeline from './components/SceneTimeline';
 import type { Scene, ReferenceImage, VideoConfig, ScenePrompt } from './types';
-import { generateScenePrompts, generateScript, generateStoryIdea, generateSceneImage, setApiKeys } from './services/geminiService';
+import { generateScenePrompts, generateScript, generateStoryIdea, generateSceneImage, generateReferenceImage, setApiKeys } from './services/geminiService';
 import { translations, type Language } from './translations';
 import GuideModal from './components/GuideModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import ExclamationTriangleIcon from './components/icons/ExclamationTriangleIcon';
 import CodeBracketIcon from './components/icons/CodeBracketIcon';
 import ApiKeyModal from './components/ApiKeyModal';
+import GenerateReferenceImageModal from './components/GenerateReferenceImageModal';
 
 declare var JSZip: any;
 
@@ -26,6 +27,7 @@ const App: React.FC = () => {
     style: 'cinematic_travel',
     includeDialogue: false,
     dialogueLanguage: 'vi',
+    dialogueTone: '',
     format: 'trailer',
   });
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -37,6 +39,8 @@ const App: React.FC = () => {
   const [isApiKeyModalVisible, setIsApiKeyModalVisible] = useState<boolean>(false);
   const [isNewProjectConfirmVisible, setIsNewProjectConfirmVisible] = useState<boolean>(false);
   const [isResumeModalVisible, setIsResumeModalVisible] = useState<boolean>(false);
+  const [isGenerateRefImageModalVisible, setIsGenerateRefImageModalVisible] = useState<boolean>(false);
+  const [isReferenceImageLoading, setIsReferenceImageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [apiKeys, setApiKeysState] = useState<string[]>([]);
@@ -86,6 +90,7 @@ const App: React.FC = () => {
         style: 'cinematic_travel',
         includeDialogue: false,
         dialogueLanguage: 'vi',
+        dialogueTone: '',
         format: 'trailer',
     });
     setError(null);
@@ -122,6 +127,26 @@ const App: React.FC = () => {
       setIsIdeaLoading(false);
     }
   };
+  
+  const handleGenerateReferenceImage = async (prompt: string) => {
+    setIsReferenceImageLoading(true);
+    setError(null);
+    try {
+      const imageUrl = await generateReferenceImage(prompt);
+      const newImage: ReferenceImage = {
+        id: crypto.randomUUID(),
+        name: prompt.length > 40 ? prompt.substring(0, 40) + '...' : prompt,
+        imageUrl: imageUrl,
+      };
+      setReferenceImages(prev => [...prev, newImage]);
+      setIsGenerateRefImageModalVisible(false); // Close on success
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.errorGeneratingReferenceImage);
+      // Keep modal open on error to allow retry
+    } finally {
+      setIsReferenceImageLoading(false);
+    }
+};
 
   const handleGenerateScript = async () => {
     if (!storyIdea.trim() || videoConfig.duration <= 0) return;
@@ -134,7 +159,7 @@ const App: React.FC = () => {
     setGenerationProgress({ current: 0, total: 0 });
     
     try {
-      const script = await generateScript(storyIdea, videoConfig, language);
+      const script = await generateScript(storyIdea, videoConfig, language, referenceImages);
       setGeneratedScript(script);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -364,6 +389,13 @@ const App: React.FC = () => {
         currentKeys={apiKeys}
         t={t}
       />
+      <GenerateReferenceImageModal
+        isOpen={isGenerateRefImageModalVisible}
+        onClose={() => setIsGenerateRefImageModalVisible(false)}
+        onGenerate={handleGenerateReferenceImage}
+        isLoading={isReferenceImageLoading}
+        t={t}
+      />
       <ConfirmationModal
         isOpen={isNewProjectConfirmVisible}
         onClose={() => setIsNewProjectConfirmVisible(false)}
@@ -413,6 +445,7 @@ const App: React.FC = () => {
             isLoading={isLoading || isBatchGenerating}
             onGenerateStoryIdea={handleGenerateStoryIdea}
             isIdeaLoading={isIdeaLoading}
+            onOpenGenerateRefImageModal={() => setIsGenerateRefImageModalVisible(true)}
             t={t}
             language={language}
           />

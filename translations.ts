@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import type { VideoConfig } from './types';
 
 export type Language = 'en' | 'vi';
@@ -16,6 +10,8 @@ const en = {
     generationIncompleteError: (current: number, total: number) => `Generation incomplete. Only ${current} out of ${total} scenes were generated. You can try to resume.`,
     errorGeneratingImage: "An error occurred while generating the image.",
     generationFailedCanResume: (errorMsg: string) => `Scene generation failed: ${errorMsg}. You can try to resume the process.`,
+    errorGeneratingReferenceImage: "Failed to generate the reference image.",
+    generatingReferenceImage: "Generating...",
 
     // Header.tsx
     appTitle: "Travel Video Storyboarder",
@@ -26,8 +22,9 @@ const en = {
     languageLabel: "Language",
 
     // InputPanel.tsx
-    referenceLocationsLabel: "Reference Locations",
-    addReferenceImageButton: "+ Add Reference Image",
+    referenceToolsLabel: "Reference Tools",
+    addReferenceImageButton: "Upload Image",
+    generateReferenceImageButton: "Generate with AI",
     newReferenceImageName: "New Location",
     removeReferenceImageButton: "Remove this image",
     storyIdeaLabel: "Travel Idea / Itinerary",
@@ -45,46 +42,17 @@ const en = {
     generatingScriptButton: "Generating Shot List...",
     generateStoryboardButton: "Generate Storyboard",
     generatingStoryboardButton: "Generating Storyboard...",
+    dialogueSettingsLabel: "Dialogue & Voiceover Settings",
+    dialogueToggleLabel: "Enable Dialogue / Voiceover",
+    dialogueLanguageLabel: "Language",
+    dialogueToneLabel: "Voice Tone",
+    dialogueTonePlaceholder: "e.g., calm, energetic, mysterious",
     
     // Obsolete character keys replaced or removed.
-    autoGenerateButton: "",
-    analyzingScript: "",
-    characterNamePlaceholder: "",
-    removeCharacterButton: "",
-    charCoreIdentityLabel: "",
-    charCoreIdentityPlaceholder: "",
-    charPhysicalDescriptionLabel: "",
-    charPhysicalDescriptionPlaceholder: "",
-    charFacialFeaturesLabel: "",
-    charFacialFeaturesPlaceholder: "",
-    charHairLabel: "",
-    charHairPlaceholder: "",
-    charFashionStyleLabel: "",
-    charFashionStylePlaceholder: "",
-    charPersonalitySummaryLabel: "",
-    charPersonalitySummaryPlaceholder: "",
-    charKeyExpressionsGesturesLabel: "",
-    charKeyExpressionsGesturesPlaceholder: "",
-    charVoiceDescriptionLabel: "",
-    charVoiceDescriptionPlaceholder: "",
-    characterImageLabel: "",
     noImageGenerated: "No image generated.",
     generateImageButton: "Generate Image",
     generatingImageButton: "Generating...",
-    uploadImageButton: "",
-    analyzeImageButton: "",
-    analyzingImageButton: "",
-    orLabel: "",
-    addCharacterButton: "",
-    dialogueSettingsLabel: "",
-    dialogueOffLabel: "",
-    dialogueOnLabel: "",
-    dialogueLanguageLabel: "",
-    combinedCharacterDNAlabel: "",
-    copyButton: "",
-    copiedButton: "",
-    combinedCharacterDNAPlaceholder: "",
-
+    
     // SceneTimeline.tsx
     timelineTitle: "Storyboard Timeline",
     downloadButton: "Download Prompts",
@@ -206,6 +174,12 @@ const en = {
     apiKeyModalPlaceholder: "AIza...\nAIza...\n...",
     apiKeyModalNotice: "The app will automatically use the next key if the current one reaches its quota limit.",
     apiKeyModalSaveButton: "Save Keys",
+    
+    // GenerateReferenceImageModal.tsx
+    generateRefImageModalTitle: "Generate Reference Location",
+    generateRefImageModalPromptLabel: "Describe the location or style you want to create",
+    generateRefImageModalPromptPlaceholder: "e.g., A serene Japanese zen garden with a koi pond and a stone lantern, photorealistic, 4k.",
+    generateRefImageModalGenerateButton: "Generate",
 
     // Gemini Service System Instructions
     systemInstruction_generateStoryIdea: (style: string) => `You are a creative travel planner and videographer. Your task is to generate a short, compelling itinerary or concept for a travel video.
@@ -214,9 +188,32 @@ Focus on destinations, key activities, and visual highlights that would look ama
 The response must be only the story idea text, with no extra formatting or introductory phrases.`,
 
     systemInstruction_generateScript: (config: VideoConfig) => {
+        const imageContextInstruction = `
+**IMAGE CONTEXT (CRITICAL):**
+You may be provided with one or more reference images along with the text idea. These images are CRUCIAL context. You MUST analyze them and use them to guide the shot list.
+- If the style is 'Construction Timelapse' or 'Blueprint Assembly':
+  - If TWO images are provided, assume they represent the 'BEFORE' and 'AFTER' states. Your shot list MUST logically bridge the transformation between these two images.
+  - If ONE image is provided, assume it's the final product or a blueprint/sketch. Your shot list must describe how to build/assemble it from scratch.
+- For all other styles, use the images to understand the specific location, architecture, and mood. Your shot list must describe scenes that could plausibly happen in or around the locations shown in the images. The visual descriptions in your shot list MUST match the style and content of the provided images.
+`;
+        const dialogueInstruction = config.includeDialogue
+          ? `
+**DIALOGUE INSTRUCTIONS (CRITICAL):**
+The shot list MUST include dialogue or voiceover text where appropriate.
+- **Language:** The dialogue/voiceover MUST be written in the language specified by the user: **${config.dialogueLanguage}**.
+- **Tone:** The tone of the voice should be **${config.dialogueTone}**.
+- **Integration:** Write the dialogue or voiceover on a new line after the visual description for the relevant shot, prefixed with "VOICEOVER:" or a character name.`
+          : 'The script must be purely visual, with no dialogue or voiceover. Describe only what is seen and how it is filmed.';
+
         let styleSpecificInstruction = "";
         const styleLower = config.style.toLowerCase();
-        if (styleLower.includes('construction')) {
+        if (styleLower.includes('cinematic travel')) {
+            styleSpecificInstruction = `STYLE-SPECIFIC GUIDANCE (Cinematic Travel): Focus on grand, sweeping shots (wide, drone) mixed with intimate details (close-ups). Use cinematic language (e.g., 'epic reveal', 'tracking shot', 'slow-motion'). Lighting is key: emphasize golden hour, lens flares, and dramatic shadows.`;
+        } else if (styleLower.includes('handheld travel vlog')) {
+            styleSpecificInstruction = `STYLE-SPECIFIC GUIDANCE (Handheld Vlog): Mimic a vlogger's style. Use first-person (POV) shots, selfie-style shots, and shaky, energetic handheld camera movements. The tone should be personal and authentic.`;
+        } else if (styleLower.includes('asmr')) {
+            styleSpecificInstruction = `STYLE-SPECIFIC GUIDANCE (ASMR): Focus entirely on extreme close-ups of textures and sounds. Describe the sounds in detail (e.g., 'the gentle crackle of a fire', 'the soft sizzle of cooking oil'). Camera movement should be very slow and deliberate.`;
+        } else if (styleLower.includes('construction')) {
             styleSpecificInstruction = `
 **STYLE-SPECIFIC INSTRUCTION (CONSTRUCTION TIMELAPSE):**
 The user has chosen a 'Construction Timelapse' style. The ENTIRE shot list must describe the progressive construction of a single location from a SINGLE, UNCHANGING camera perspective.
@@ -237,40 +234,69 @@ The user has chosen a 'First-Person Warfare' style. The entire shot list must de
         } else if (styleLower.includes('blueprint assembly')) {
             styleSpecificInstruction = `
 **STYLE-SPECIFIC INSTRUCTION (BLUEPRINT ASSEMBLY):**
-The user has chosen a 'Blueprint Assembly' style. The ENTIRE shot list must describe the progressive assembly of a mechanical or industrial product from a SINGLE, UNCHANGING camera perspective.
-- **Shot 1:** A technical blueprint or schematic is displayed on a surface or as a hologram.
-- **Subsequent Shots:** Each shot describes a new stage of assembly. Components materialize and fly into place, building upon the previous stage (e.g., chassis, engine parts, circuits, outer casing).
-- **Final Shots:** Describe the fully assembled product, possibly with lights turning on, parts moving, or a final polished presentation.
-- **DO NOT** describe different camera angles or movements. Every shot is from the same static viewpoint. The script must be a list of assembly phases.
+You are an expert mechanical design engineer. The user has provided a blueprint/technical drawing image. Your task is to create a detailed, step-by-step assembly sequence based **exclusively** on this image.
+
+**CRITICAL ANALYSIS & LOGIC:**
+1.  **Deconstruct the Blueprint:** First, mentally deconstruct the final product shown in the image into its primary components. Identify the core frame/chassis, internal mechanisms (engine, circuits, gears), and external parts (casing, wheels, panels).
+2.  **Establish 'Inside-Out' Assembly Order:** Your shot list MUST follow a strict, logical "inside-out" assembly sequence. This is non-negotiable.
+    - **Shot 1:** Always begin with the blueprint itself, displayed as a 2D drawing or a 3D hologram.
+    - **Core Structure:** The next shots must build the foundational frame or chassis.
+    - **Internal Components:** After the frame, add the main internal components (e.g., the engine, power core, motherboard).
+    - **External Components:** Once the internals are in place, add the external body panels, wheels, limbs, etc.
+    - **Finishing Touches:** The final shots should add small details like lights, decals, and end with the product activating (e.g., lights turning on).
+3.  **Static Camera:** The entire sequence must be from a SINGLE, UNCHANGING camera perspective. Do not describe pans, zooms, or angle changes. The product assembles in the center of the frame.
+4.  **Visual Fidelity:** Each shot description must visually correspond to the shapes and details seen in the provided blueprint image.
 `;
         }
 
 
-        return `You are a professional travel videographer. Your task is to write a descriptive shot list based on a travel idea and video configuration.
+        return `You are a professional travel videographer and scriptwriter. Your task is to write a descriptive shot list based on a travel idea and video configuration.
+${imageContextInstruction}
 The final video will be approximately ${config.duration} seconds long.
-The shot list should describe a sequence of distinct shots, specifying camera angles (e.g., wide, drone, close-up) and camera movement (e.g., slow pan, fly-over, tracking shot).
-The pacing should match the specified video format: '${config.format}'.
-- 'trailer': Fast-paced, quick cuts, high-impact moments. Focus on building excitement.
-- 'short': Standard pacing, allows for more scenic and detailed shots.
-- 'longform': Slower pace, more focus on atmosphere, emotion, and lingering on beautiful views.
+The shot list should describe a sequence of distinct shots, specifying camera angles and movement.
+${dialogueInstruction}
+
+**Pacing and Shot Count Guidance (CRITICAL):**
+You must adjust the number of shots in your list based on the video format to match the total duration.
+- **'trailer' (Fast-paced):** Generate a high number of short, impactful shots. Aim for approximately 10-15 distinct shots per minute of video.
+- **'short' (Standard pace):** Generate a moderate number of shots. Aim for approximately 7-10 distinct shots per minute of video.
+- **'longform' (Slow pace):** Generate fewer, more detailed and atmospheric shots. Aim for approximately 4-6 distinct shots per minute of video, describing longer camera movements for each.
 
 ${styleSpecificInstruction}
 
 **CRITICAL INSTRUCTION:** You MUST ensure the shot list contains enough UNIQUE content to fill the entire ${config.duration} seconds. Do not loop or repeat the same shot or location. The journey must expand and progress based on the theme.
 
-The script should be purely visual, with no dialogue or voiceover. Describe what is seen and how it is filmed.
 The output must be ONLY the shot list text. Do not include any introductory phrases, summaries, or explanations.`;
     },
 
     systemInstruction_generateScenes: (config: VideoConfig, isContinuation: boolean) => {
         const sceneDuration = 8;
         const styleLower = config.style.toLowerCase();
+        
         const isPov = styleLower.includes('pov');
         const isHyperColor = styleLower.includes('hyper color');
         const isSurvival = styleLower.includes('wilderness survival');
         const isConstruction = styleLower.includes('construction');
         const isWarfare = styleLower.includes('first-person warfare');
         const isBlueprint = styleLower.includes('blueprint assembly');
+
+        let pacingInstruction = "";
+        switch (config.format) {
+            case 'trailer':
+                pacingInstruction = `**Pacing is FAST ('trailer').** You must create high-energy scenes. If the shot list contains many short actions, you MUST combine several of them into a single ${sceneDuration}-second scene to maintain a rapid pace. A single line item from the shot list might only represent 2-4 seconds of action.`;
+                break;
+            case 'longform':
+                pacingInstruction = `**Pacing is SLOW ('longform').** You must create atmospheric, lingering scenes. You should expand a single point or moment from the shot list to fill the entire ${sceneDuration}-second scene. Emphasize slow, deliberate camera movements and absorbing the environment.`;
+                break;
+            case 'short':
+            default:
+                pacingInstruction = `**Pacing is STANDARD ('short').** A single ${sceneDuration}-second scene should comfortably cover one or two points from the shot list. The flow should feel natural and unhurried, but still engaging.`;
+                break;
+        }
+        
+        const dialogueInstruction = config.includeDialogue
+          ? `- \`dialogue\`: (String) Extract the corresponding dialogue or voiceover for this scene from the shot list. The language must be **${config.dialogueLanguage}**. The tone should be consistent with **'${config.dialogueTone}'**. If there's no dialogue for this specific scene in the shot list, use an empty string "".`
+          : `- \`dialogue\`: (String) MUST be an empty string "". No dialogue.`;
 
         let extraEnvInstruction = "";
         if (isHyperColor) {
@@ -280,7 +306,7 @@ The output must be ONLY the shot list text. Do not include any introductory phra
         } else if (isWarfare) {
             extraEnvInstruction = " IMPORTANT: The visual style is FIRST-PERSON WARFARE. The environment is a chaotic, active battlefield. Include elements like smoke, distant explosions, debris, trenches, and ruined structures. The atmosphere is tense and action-packed."
         } else if (isBlueprint) {
-             extraEnvInstruction = " IMPORTANT: The visual style is BLUEPRINT ASSEMBLY. The environment must be a clean, futuristic, or technical setting, like a laboratory, workshop, or a neutral studio background with grid lines. The blueprint should be visible at the start and can fade or persist as a holographic overlay during assembly."
+             extraEnvInstruction = " IMPORTANT: The visual style is BLUEPRINT ASSEMBLY. The environment must be a clean, futuristic, or technical setting, like a laboratory, workshop, or a neutral studio background with grid lines. The blueprint can persist as a faint holographic overlay during assembly to guide the parts."
         }
         
         let extraMotionInstruction = "";
@@ -318,12 +344,14 @@ The output must be ONLY the shot list text. Do not include any introductory phra
         } else if (isWarfare) {
             antiRepetition = "CRITICAL: Ensure the narrative action sequence PROGRESSES. Do not repeat actions or stay in one place. Each scene must advance the short story (e.g., from conflict, to objective, to resolution).";
         } else if (isBlueprint) {
-            antiRepetition = "CRITICAL: Ensure the assembly PROGRESSES. Do not repeat an assembly stage. Each scene must build upon the last, adding new components until the product is fully assembled and operational.";
+            antiRepetition = `CRITICAL: Ensure the assembly PROGRESSES LOGICALLY FROM THE INSIDE OUT. Do not repeat an assembly stage. Each scene must build upon the last, adding new components until the product is fully assembled. The 'description' for this scene must explicitly state which part is being added and how it connects to the components from the previous scene.`;
         }
 
 
         return `You are a Visual Storyboard AI specializing in travel cinematography. Your task is to break down a shot list into a series of detailed 8-second scenes for an image generation model.
 You will receive a shot list and video configuration. You must generate a JSON array of scene objects.
+
+${pacingInstruction}
 
 **LANGUAGE REQUIREMENTS (ABSOLUTELY CRITICAL):**
 - ALL string values in the entire JSON output (description, style, camera, lighting, motion, audio, etc.) MUST be written in **English**. English is the required language for the video generation model.
@@ -345,7 +373,7 @@ Each scene object must have the following structure and adhere to these strict r
 - \`environment\`: (String) Detail the background, setting, and atmosphere in **English**.${extraEnvInstruction}
 - \`elements\`: (Array of Strings) List key objects or environmental features present in the scene in **English**.
 - \`motion\`: (String) **MUST USE COORDINATES (unless static).** ${extraMotionInstruction} A step-by-step description of all camera movements within the 8-second shot, relative to the coordinate system, in **English**. Example: "(0-8s): Slow flycam shot moving forward from (X:50, Y:80, Z:background) to (X:50, Y:20, Z:midground), revealing the valley below."
-- \`dialogue\`: (String) MUST be an empty string "". No dialogue.
+${dialogueInstruction}
 - \`audio\`: (String) **DO NOT mention music.** Describe only the realistic, vivid, and immersive ambient sounds of the location in **English**. Focus on hyper-realistic and detailed sounds. Example: "The gentle lapping of water against the shore, a distant seagull's cry, the soft crunch of sand underfoot, a light breeze rustling through palm leaves."
 - \`ending\`: (String) Describe the final frame or transition of the scene in **English**.
 - \`text\`: (String) Usually "none".
@@ -373,6 +401,8 @@ const vi = {
     generationIncompleteError: (current: number, total: number) => `Tạo chưa hoàn tất. Chỉ có ${current} trên tổng số ${total} phân cảnh được tạo. Bạn có thể thử tiếp tục.`,
     errorGeneratingImage: "Đã xảy ra lỗi khi tạo hình ảnh.",
     generationFailedCanResume: (errorMsg: string) => `Tạo phân cảnh thất bại: ${errorMsg}. Bạn có thể thử tiếp tục quá trình.`,
+    errorGeneratingReferenceImage: "Tạo ảnh tham chiếu thất bại.",
+    generatingReferenceImage: "Đang tạo...",
 
     // Header.tsx
     appTitle: "Storyboard Video Du lịch",
@@ -383,8 +413,9 @@ const vi = {
     languageLabel: "Ngôn ngữ",
 
     // InputPanel.tsx
-    referenceLocationsLabel: "Địa điểm tham chiếu",
-    addReferenceImageButton: "+ Thêm ảnh tham chiếu",
+    referenceToolsLabel: "Công cụ tham chiếu",
+    addReferenceImageButton: "Tải ảnh lên",
+    generateReferenceImageButton: "Tạo bằng AI",
     newReferenceImageName: "Địa điểm mới",
     removeReferenceImageButton: "Xóa ảnh này",
     storyIdeaLabel: "Ý tưởng du lịch / Lịch trình",
@@ -402,46 +433,17 @@ const vi = {
     generatingScriptButton: "Đang tạo danh sách...",
     generateStoryboardButton: "Tạo bảng phân cảnh",
     generatingStoryboardButton: "Đang tạo bảng phân cảnh...",
+    dialogueSettingsLabel: "Cài đặt Đối thoại & Lời dẫn",
+    dialogueToggleLabel: "Bật Đối thoại / Lời dẫn",
+    dialogueLanguageLabel: "Ngôn ngữ",
+    dialogueToneLabel: "Tông giọng",
+    dialogueTonePlaceholder: "VD: bình tĩnh, năng động, bí ẩn",
     
     // Obsolete character keys
-    autoGenerateButton: "",
-    analyzingScript: "",
-    characterNamePlaceholder: "",
-    removeCharacterButton: "",
-    charCoreIdentityLabel: "",
-    charCoreIdentityPlaceholder: "",
-    charPhysicalDescriptionLabel: "",
-    charPhysicalDescriptionPlaceholder: "",
-    charFacialFeaturesLabel: "",
-    charFacialFeaturesPlaceholder: "",
-    charHairLabel: "",
-    charHairPlaceholder: "",
-    charFashionStyleLabel: "",
-    charFashionStylePlaceholder: "",
-    charPersonalitySummaryLabel: "",
-    charPersonalitySummaryPlaceholder: "",
-    charKeyExpressionsGesturesLabel: "",
-    charKeyExpressionsGesturesPlaceholder: "",
-    charVoiceDescriptionLabel: "",
-    charVoiceDescriptionPlaceholder: "",
-    characterImageLabel: "",
     noImageGenerated: "Chưa có ảnh nào được tạo.",
     generateImageButton: "Tạo ảnh",
     generatingImageButton: "Đang tạo...",
-    uploadImageButton: "",
-    analyzeImageButton: "",
-    analyzingImageButton: "",
-    orLabel: "",
-    addCharacterButton: "",
-    dialogueSettingsLabel: "",
-    dialogueOffLabel: "",
-    dialogueOnLabel: "",
-    dialogueLanguageLabel: "",
-    combinedCharacterDNAlabel: "",
-    copyButton: "",
-    copiedButton: "",
-    combinedCharacterDNAPlaceholder: "",
-
+    
     // SceneTimeline.tsx
     timelineTitle: "Dòng thời gian phân cảnh",
     downloadButton: "Tải xuống prompt",
@@ -515,6 +517,12 @@ const vi = {
     apiKeyModalPlaceholder: "AIza...\nAIza...\n...",
     apiKeyModalNotice: "Ứng dụng sẽ tự động sử dụng key tiếp theo nếu key hiện tại hết dung lượng.",
     apiKeyModalSaveButton: "Lưu Keys",
+    
+    // GenerateReferenceImageModal.tsx
+    generateRefImageModalTitle: "Tạo Địa điểm Tham chiếu",
+    generateRefImageModalPromptLabel: "Mô tả địa điểm hoặc phong cách bạn muốn tạo",
+    generateRefImageModalPromptPlaceholder: "VD: Một khu vườn thiền Nhật Bản thanh tịnh với hồ cá koi và đèn đá, ảnh thực, 4k.",
+    generateRefImageModalGenerateButton: "Tạo",
 
     // Gemini Service System Instructions (VI)
     systemInstruction_generateStoryIdea: (style: string) => `Bạn là một người lập kế hoạch du lịch và nhà quay phim sáng tạo. Nhiệm vụ của bạn là tạo ra một lịch trình hoặc ý tưởng ngắn gọn, hấp dẫn cho một video du lịch.
@@ -523,9 +531,32 @@ Tập trung vào các điểm đến, hoạt động chính và các điểm nh�
 Phản hồi chỉ được là văn bản ý tưởng, không có định dạng thừa hoặc các cụm từ giới thiệu.`,
 
     systemInstruction_generateScript: (config: VideoConfig) => {
+        const imageContextInstruction = `
+**BỐI CẢNH HÌNH ẢNH (QUAN TRỌNG):**
+Bạn có thể được cung cấp một hoặc nhiều hình ảnh tham chiếu cùng với ý tưởng văn bản. Những hình ảnh này là bối cảnh CỰC KỲ QUAN TRỌNG. Bạn PHẢI phân tích chúng và sử dụng chúng để định hướng danh sách cảnh quay.
+- Nếu phong cách là 'Timelapse Xây dựng' hoặc 'Sản xuất theo Bản vẽ':
+  - Nếu có HAI hình ảnh được cung cấp, hãy giả định chúng đại diện cho trạng thái 'TRƯỚC' và 'SAU'. Danh sách cảnh quay của bạn PHẢI bắc cầu một cách hợp lý cho sự biến đổi giữa hai hình ảnh này.
+  - Nếu có MỘT hình ảnh được cung cấp, hãy giả định đó là sản phẩm cuối cùng hoặc một bản vẽ/phác thảo. Danh sách cảnh quay của bạn phải mô tả cách xây dựng/lắp ráp nó từ đầu.
+- Đối với tất cả các phong cách khác, hãy sử dụng hình ảnh để hiểu vị trí, kiến trúc và tâm trạng cụ thể. Danh sách cảnh quay của bạn phải mô tả các cảnh có thể xảy ra một cách hợp lý trong hoặc xung quanh các địa điểm được hiển thị trong hình ảnh. Các mô tả hình ảnh trong danh sách cảnh quay của bạn PHẢI khớp với phong cách và nội dung của hình ảnh được cung cấp.
+`;
+        const dialogueInstruction = config.includeDialogue
+          ? `
+**HƯỚNG DẪN VỀ LỜI THOẠI (QUAN TRỌNG):**
+Danh sách cảnh quay PHẢI bao gồm lời thoại hoặc lời dẫn ở những chỗ phù hợp.
+- **Ngôn ngữ:** Lời thoại/lời dẫn PHẢI được viết bằng ngôn ngữ do người dùng chỉ định: **${config.dialogueLanguage}**.
+- **Tông giọng:** Tông giọng của lời nói phải là **${config.dialogueTone}**.
+- **Tích hợp:** Viết lời thoại hoặc lời dẫn trên một dòng mới sau phần mô tả hình ảnh cho cảnh quay có liên quan, có tiền tố là "VOICEOVER:" hoặc tên nhân vật.`
+          : 'Kịch bản phải hoàn toàn bằng hình ảnh, không có đối thoại hoặc lời dẫn. Chỉ mô tả những gì được thấy và cách nó được quay.';
+
         let styleSpecificInstruction = "";
         const styleLower = config.style.toLowerCase();
-        if (styleLower.includes('construction')) {
+        if (styleLower.includes('cinematic travel')) {
+            styleSpecificInstruction = `HƯỚNG DẪN THEO PHONG CÁCH (Du lịch điện ảnh): Tập trung vào các cảnh quay hoành tráng, bao quát (rộng, drone) kết hợp với các chi tiết cận cảnh (close-ups). Sử dụng ngôn ngữ điện ảnh (ví dụ: 'cảnh quay tiết lộ hùng vĩ', 'cảnh quay theo dấu', 'chuyển động chậm'). Ánh sáng là yếu tố then chốt: nhấn mạnh giờ vàng, hiệu ứng lóa ống kính và bóng đổ ấn tượng.`;
+        } else if (styleLower.includes('handheld travel vlog')) {
+            styleSpecificInstruction = `HƯỚNG DẪN THEO PHONG CÁCH (Vlog du lịch cầm tay): Bắt chước phong cách của một vlogger. Sử dụng các cảnh quay góc nhìn thứ nhất (POV), cảnh quay kiểu selfie và các chuyển động máy quay cầm tay rung lắc, đầy năng lượng. Tông điệu nên cá nhân và chân thực.`;
+        } else if (styleLower.includes('asmr')) {
+            styleSpecificInstruction = `HƯỚNG DẪN THEO PHONG CÁCH (ASMR): Tập trung hoàn toàn vào các cảnh quay cận cảnh cực độ về kết cấu và âm thanh. Mô tả chi tiết các âm thanh (ví dụ: 'tiếng lách tách nhẹ của lửa', 'tiếng xèo xèo nhẹ của dầu ăn'). Chuyển động máy quay phải rất chậm và có chủ ý.`;
+        } else if (styleLower.includes('construction')) {
             styleSpecificInstruction = `
 **HƯỚNG DẪN THEO PHONG CÁCH (TIMELAPSE XÂY DỰNG):**
 Người dùng đã chọn phong cách 'Timelapse Xây dựng'. TOÀN BỘ danh sách cảnh quay phải mô tả quá trình xây dựng lũy tiến của một địa điểm duy nhất từ một góc máy DUY NHẤT, KHÔNG THAY ĐỔI.
@@ -545,41 +576,70 @@ Người dùng đã chọn phong cách 'Chiến tranh Góc nhìn Thứ nhất'. 
 `;
         } else if (styleLower.includes('blueprint assembly')) {
              styleSpecificInstruction = `
-**HƯỚDẪN THEO PHONG CÁCH (SẢN XUẤT THEO BẢN VẼ):**
-Người dùng đã chọn phong cách 'Sản xuất theo Bản vẽ'. TOÀN BỘ danh sách cảnh quay phải mô tả quá trình lắp ráp lũy tiến của một sản phẩm cơ khí hoặc công nghiệp từ một góc máy DUY NHẤT, KHÔNG THAY ĐỔI.
-- **Cảnh 1:** Một bản vẽ kỹ thuật hoặc sơ đồ được hiển thị trên một bề mặt hoặc dưới dạng hình ảnh 3D (hologram).
-- **Các cảnh tiếp theo:** Mỗi cảnh mô tả một giai đoạn lắp ráp mới. Các bộ phận hiện ra và bay vào vị trí, xây dựng dựa trên giai đoạn trước (ví dụ: khung gầm, bộ phận động cơ, mạch điện, vỏ ngoài).
-- **Các cảnh cuối:** Mô tả sản phẩm đã lắp ráp hoàn chỉnh, có thể có đèn bật sáng, các bộ phận chuyển động, hoặc một bài trình bày cuối cùng.
-- **KHÔNG** mô tả các góc máy hoặc chuyển động máy quay khác nhau. Mọi cảnh đều từ cùng một điểm nhìn tĩnh. Kịch bản phải là một danh sách các giai đoạn lắp ráp.
+**HƯỚNG DẪN THEO PHONG CÁCH (SẢN XUẤT THEO BẢN VẼ):**
+Bạn là một kỹ sư thiết kế cơ khí chuyên nghiệp. Người dùng đã cung cấp một hình ảnh bản vẽ kỹ thuật. Nhiệm vụ của bạn là tạo ra một chuỗi lắp ráp chi tiết, từng bước dựa **hoàn toàn** vào hình ảnh này.
+
+**PHÂN TÍCH VÀ LOGIC QUAN TRỌNG:**
+1.  **Phân tích Bản vẽ:** Đầu tiên, hãy phân tích sản phẩm cuối cùng trong hình ảnh thành các bộ phận chính. Xác định khung sườn cốt lõi, các cơ cấu bên trong (động cơ, mạch điện, bánh răng) và các bộ phận bên ngoài (vỏ, bánh xe, tấm ốp).
+2.  **Thiết lập Trình tự Lắp ráp 'Từ trong ra ngoài':** Danh sách cảnh quay của bạn BẮT BUỘC phải tuân theo một trình tự lắp ráp "từ trong ra ngoài" nghiêm ngặt và hợp lý. Điều này không thể thay đổi.
+    - **Cảnh 1:** Luôn bắt đầu với chính bản vẽ, được hiển thị dưới dạng 2D hoặc hologram 3D.
+    - **Cấu trúc lõi:** Các cảnh tiếp theo phải xây dựng khung sườn nền tảng.
+    - **Các bộ phận bên trong:** Sau khung sườn, hãy thêm các bộ phận chính bên trong (ví dụ: động cơ, lõi năng lượng, bo mạch chủ).
+    - **Các bộ phận bên ngoài:** Khi các bộ phận bên trong đã vào vị trí, hãy thêm các tấm vỏ bên ngoài, bánh xe, tay chân, v.v.
+    - **Hoàn thiện:** Các cảnh cuối cùng nên thêm các chi tiết nhỏ như đèn, đề can và kết thúc bằng việc sản phẩm được kích hoạt (ví dụ: đèn bật sáng).
+3.  **Máy quay tĩnh:** Toàn bộ chuỗi phải được quay từ một góc máy DUY NHẤT, KHÔNG THAY ĐỔI. Không mô tả các động tác lia máy, thu phóng hoặc thay đổi góc. Sản phẩm được lắp ráp ở trung tâm khung hình.
+4.  **Trung thực với hình ảnh:** Mỗi mô tả cảnh quay phải tương ứng về mặt hình ảnh với các hình dạng và chi tiết được thấy trong hình ảnh bản vẽ được cung cấp.
 `;
         }
 
 
-        return `Bạn là một nhà quay phim du lịch chuyên nghiệp. Nhiệm vụ của bạn là viết một danh sách cảnh quay mô tả dựa trên ý tưởng du lịch và cấu hình video.
+        return `Bạn là một nhà quay phim và biên kịch du lịch chuyên nghiệp. Nhiệm vụ của bạn là viết một danh sách cảnh quay mô tả dựa trên ý tưởng du lịch và cấu hình video.
+${imageContextInstruction}
 Video cuối cùng sẽ dài khoảng ${config.duration} giây.
-Danh sách cảnh quay phải mô tả một chuỗi các cảnh quay riêng biệt, chỉ định góc máy (ví dụ: rộng, drone, cận cảnh) và chuyển động của máy quay (ví dụ: lia máy chậm, bay qua, theo dấu).
-Nhịp độ phải phù hợp với định dạng video đã chỉ định: '${config.format}'.
-- 'trailer': Nhịp độ nhanh, cắt cảnh nhanh, những khoảnh khắc có tác động mạnh. Tập trung vào việc tạo sự hứng thú.
-- 'short': Nhịp độ tiêu chuẩn, cho phép có nhiều cảnh đẹp và chi tiết hơn.
-- 'longform': Nhịp độ chậm hơn, tập trung nhiều hơn vào không khí, cảm xúc và dừng lại ở những khung cảnh đẹp.
+Danh sách cảnh quay phải mô tả một chuỗi các cảnh quay riêng biệt, chỉ định góc máy và chuyển động.
+${dialogueInstruction}
+
+**Hướng dẫn về Nhịp độ và Số lượng Cảnh quay (QUAN TRỌNG):**
+Bạn phải điều chỉnh số lượng cảnh quay trong danh sách của mình dựa trên định dạng video để khớp với tổng thời lượng.
+- **'trailer' (Nhịp độ nhanh):** Tạo ra số lượng lớn các cảnh quay ngắn, có tác động mạnh. Mục tiêu khoảng 10-15 cảnh quay riêng biệt cho mỗi phút video.
+- **'short' (Nhịp độ vừa):** Tạo ra số lượng cảnh quay vừa phải. Mục tiêu khoảng 7-10 cảnh quay riêng biệt cho mỗi phút video.
+- **'longform' (Nhịp độ chậm):** Tạo ra ít cảnh quay hơn, nhưng chi tiết và giàu không khí hơn. Mục tiêu khoảng 4-6 cảnh quay riêng biệt cho mỗi phút video, mô tả các chuyển động máy quay dài hơn cho mỗi cảnh.
 
 ${styleSpecificInstruction}
 
 **CHỈ DẪN QUAN TRỌNG:** Bạn PHẢI đảm bảo danh sách cảnh quay chứa đủ nội dung ĐỘC ĐÁO để lấp đầy toàn bộ ${config.duration} giây. Không được lặp lại cảnh hoặc quay vòng lại cùng một địa điểm. Hành trình phải mở rộng và phát triển dựa trên chủ đề.
 
-Kịch bản phải hoàn toàn bằng hình ảnh, không có đối thoại hoặc lời dẫn. Mô tả những gì được thấy và cách nó được quay.
 Đầu ra chỉ được là văn bản danh sách cảnh quay. Không bao gồm bất kỳ cụm từ giới thiệu, tóm tắt hoặc giải thích nào.`;
     },
 
     systemInstruction_generateScenes: (config: VideoConfig, isContinuation: boolean) => {
         const sceneDuration = 8;
         const styleLower = config.style.toLowerCase();
+        
         const isPov = styleLower.includes('pov');
         const isHyperColor = styleLower.includes('hyper color');
         const isSurvival = styleLower.includes('wilderness survival');
         const isConstruction = styleLower.includes('construction');
         const isWarfare = styleLower.includes('first-person warfare');
         const isBlueprint = styleLower.includes('blueprint assembly');
+        
+        let pacingInstruction = "";
+        switch (config.format) {
+            case 'trailer':
+                pacingInstruction = `**Nhịp độ NHANH ('trailer').** Bạn phải tạo ra các cảnh có năng lượng cao. Nếu danh sách cảnh quay chứa nhiều hành động ngắn, bạn BẮT BUỘC phải kết hợp một vài hành động trong số đó vào một cảnh ${sceneDuration} giây duy nhất để duy trì nhịp độ nhanh. Một mục trong danh sách cảnh quay có thể chỉ đại diện cho 2-4 giây hành động.`;
+                break;
+            case 'longform':
+                pacingInstruction = `**Nhịp độ CHẬM ('longform').** Bạn phải tạo ra các cảnh quay đầy không khí, kéo dài. Bạn nên mở rộng một điểm hoặc khoảnh khắc duy nhất từ danh sách cảnh quay để lấp đầy toàn bộ cảnh ${sceneDuration} giây. Nhấn mạnh các chuyển động máy quay chậm, có chủ ý và việc hòa mình vào môi trường.`;
+                break;
+            case 'short':
+            default:
+                pacingInstruction = `**Nhịp độ TIÊU CHUẨN ('short').** Một cảnh ${sceneDuration} giây duy nhất nên bao quát một cách thoải mái một hoặc hai điểm từ danh sách cảnh quay. Dòng chảy phải cảm thấy tự nhiên và không vội vã, nhưng vẫn hấp dẫn.`;
+                break;
+        }
+
+        const dialogueInstruction = config.includeDialogue
+          ? `- \`dialogue\`: (String) Trích xuất lời thoại hoặc lời dẫn tương ứng cho cảnh này từ danh sách cảnh quay. Ngôn ngữ phải là **${config.dialogueLanguage}**. Tông giọng phải nhất quán với **'${config.dialogueTone}'**. Nếu không có lời thoại cho cảnh này trong danh sách cảnh quay, hãy sử dụng một chuỗi rỗng "".`
+          : `- \`dialogue\`: (String) BẮT BUỘC là một chuỗi rỗng "". Không có lời thoại.`;
 
         let extraEnvInstruction = "";
         if (isHyperColor) {
@@ -589,7 +649,7 @@ Kịch bản phải hoàn toàn bằng hình ảnh, không có đối thoại ho
         } else if (isWarfare) {
             extraEnvInstruction = " IMPORTANT: The visual style is FIRST-PERSON WARFARE. The environment is a chaotic, active battlefield. Include elements like smoke, distant explosions, debris, trenches, and ruined structures. The atmosphere is tense and action-packed."
         } else if (isBlueprint) {
-             extraEnvInstruction = " IMPORTANT: The visual style is BLUEPRINT ASSEMBLY. The environment must be a clean, futuristic, or technical setting, like a laboratory, workshop, or a neutral studio background with grid lines. The blueprint should be visible at the start and can fade or persist as a holographic overlay during assembly."
+             extraEnvInstruction = " IMPORTANT: The visual style is BLUEPRINT ASSEMBLY. The environment must be a clean, futuristic, or technical setting, like a laboratory, workshop, or a neutral studio background with grid lines. The blueprint can persist as a faint holographic overlay during assembly to guide the parts."
         }
         
         let extraMotionInstruction = "";
@@ -627,12 +687,14 @@ Kịch bản phải hoàn toàn bằng hình ảnh, không có đối thoại ho
         } else if (isWarfare) {
             antiRepetition = "CRITICAL: Ensure the narrative action sequence PROGRESSES. Do not repeat actions or stay in one place. Each scene must advance the short story (e.g., from conflict, to objective, to resolution).";
         } else if (isBlueprint) {
-            antiRepetition = "CRITICAL: Ensure the assembly PROGRESSES. Do not repeat an assembly stage. Each scene must build upon the last, adding new components until the product is fully assembled and operational.";
+            antiRepetition = `CRITICAL: Ensure the assembly PROGRESSES LOGICALLY FROM THE INSIDE OUT. Do not repeat an assembly stage. Each scene must build upon the last, adding new components until the product is fully assembled. The 'description' for this scene must explicitly state which part is being added and how it connects to the components from the previous scene.`;
         }
 
 
         return `Bạn là một AI tạo bảng phân cảnh hình ảnh chuyên về quay phim du lịch. Nhiệm vụ của bạn là chia nhỏ một danh sách cảnh quay thành một loạt các phân cảnh 8 giây chi tiết cho một mô hình tạo hình ảnh.
 Bạn sẽ nhận được một danh sách cảnh quay và cấu hình video. Bạn phải tạo ra một mảng JSON các đối tượng phân cảnh.
+
+${pacingInstruction}
 
 **YÊU CẦU VỀ NGÔN NGỮ (CỰC KỲ QUAN TRỌNG):**
 - TẤT CẢ các giá trị chuỗi trong toàn bộ đầu ra JSON (description, style, camera, lighting, motion, audio, v.v.) BẮT BUỘC phải được viết bằng **tiếng Anh (English)**. Tiếng Anh là ngôn ngữ bắt buộc cho mô hình tạo video.
@@ -654,7 +716,7 @@ Mỗi đối tượng phân cảnh phải có cấu trúc sau và tuân thủ c�
 - \`environment\`: (String) Chi tiết về bối cảnh và không khí bằng **tiếng Anh**.${extraEnvInstruction}
 - \`elements\`: (Array of Strings) Liệt kê các đối tượng chính hoặc các đặc điểm môi trường bằng **tiếng Anh**.
 - \`motion\`: (String) **PHẢI DÙNG TỌA ĐỘ (trừ khi tĩnh).** ${extraMotionInstruction} Mô tả từng bước của tất cả các chuyển động máy quay trong cảnh 8 giây, tương đối với hệ tọa độ, bằng **tiếng Anh**. Ví dụ: "(0-8s): Slow flycam shot moving forward from (X:50, Y:80, Z:background) to (X:50, Y:20, Z:midground), revealing the valley below."
-- \`dialogue\`: (String) BẮT BUỘC là một chuỗi rỗng "". Không có lời thoại.
+${dialogueInstruction}
 - \`audio\`: (String) **KHÔNG đề cập đến âm nhạc.** Chỉ mô tả các âm thanh môi trường thực tế, sống động và chân thực của địa điểm bằng **tiếng Anh**. Tập trung vào các âm thanh siêu thực và chi tiết. Ví dụ: "The gentle lapping of water against the shore, a distant seagull's cry, the soft crunch of sand underfoot, a light breeze rustling through palm leaves."
 - \`ending\`: (String) Mô tả khung hình cuối cùng hoặc chuyển cảnh của cảnh quay bằng **tiếng Anh**.
 - \`text\`: (String) Thường là "none".

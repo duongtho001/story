@@ -1,9 +1,3 @@
-
-
-
-
-
-
 export const VIDEO_STYLES = [
   { key: 'cinematic_travel', en: 'Cinematic Travel', vi: 'Du lịch điện ảnh' },
   { key: 'drone_flycam', en: 'Drone & Flycam Shots', vi: 'Cảnh quay Drone & Flycam' },
@@ -25,4 +19,9 @@ export const VIDEO_FORMATS = [
   { key: 'trailer', en: 'Trailer (Fast-paced)', vi: 'Trailer (Nhịp độ nhanh)' },
   { key: 'short', en: 'Short Film (Standard pace)', vi: 'Phim ngắn (Nhịp độ vừa)' },
   { key: 'longform', en: 'Long-form (Slow pace)', vi: 'Video dài (Nhịp độ chậm)' },
+];
+
+export const DIALOGUE_LANGUAGES = [
+  { key: 'vi', en: 'Vietnamese', vi: 'Tiếng Việt' },
+  { key: 'en', en: 'English', vi: 'English' },
 ];

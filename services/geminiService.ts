@@ -1,7 +1,5 @@
-
-
 import { GoogleGenAI, Type, Modality, GenerateContentResponse } from "@google/genai";
-import type { VideoConfig, Scene, ScenePrompt } from '../types';
+import type { VideoConfig, Scene, ScenePrompt, ReferenceImage } from '../types';
 import { Language, translations } from "../translations";
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -201,7 +199,8 @@ export const generateStoryIdea = async (
 export const generateScript = async (
   storyIdea: string,
   config: VideoConfig,
-  language: Language
+  language: Language,
+  referenceImages: ReferenceImage[]
 ): Promise<string> => {
   const model = 'gemini-2.5-pro';
   const systemInstruction = translations[language].systemInstruction_generateScript(config);
@@ -212,12 +211,27 @@ export const generateScript = async (
 
     **Video Style:** ${config.style}
   `;
+  
+  const parts: any[] = [{ text: userPrompt }];
+
+  for (const image of referenceImages) {
+      const match = image.imageUrl.match(/^data:(image\/.+);base64,(.+)$/);
+      if (match) {
+          parts.push({
+              inlineData: {
+                  mimeType: match[1],
+                  data: match[2],
+              },
+          });
+      }
+  }
+
 
   const apiCallFactory = (apiKey: string) => async () => {
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model,
-      contents: userPrompt,
+      contents: { parts },
       config: {
         systemInstruction,
         temperature: 0.9,
@@ -362,3 +376,31 @@ export const generateScenePrompts = async (
         throw new Error(getErrorMessage(error, 'generateSceneImage'));
       }
   };
+
+  export const generateReferenceImage = async (prompt: string): Promise<string> => {
+    const model = 'gemini-2.5-flash-image';
+    
+    const textPart = { text: prompt };
+
+    const apiCallFactory = (apiKey: string) => async () => {
+        const ai = new GoogleGenAI({ apiKey });
+        const response: GenerateContentResponse = await ai.models.generateContent({
+            model,
+            contents: { parts: [textPart] },
+        });
+
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                const base64ImageBytes: string = part.inlineData.data;
+                return `data:image/png;base64,${base64ImageBytes}`;
+            }
+        }
+        throw new Error("No image data found in the response from the model for reference image.");
+    };
+    
+    try {
+      return await executeWithKeyRotation(apiCallFactory, 'generateReferenceImage');
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'generateReferenceImage'));
+    }
+};

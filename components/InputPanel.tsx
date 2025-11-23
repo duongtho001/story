@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { ReferenceImage, VideoConfig } from '../types';
-import { VIDEO_STYLES, VIDEO_FORMATS } from '../constants';
+import { VIDEO_STYLES, VIDEO_FORMATS, DIALOGUE_LANGUAGES } from '../constants';
 import SparklesIcon from './icons/SparklesIcon';
 import LightBulbIcon from './icons/LightBulbIcon';
-import CameraIcon from './icons/CameraIcon';
 import Loader from './Loader';
 import type { TranslationKeys, Language } from '../translations';
 import PhotoGroupIcon from './icons/PhotoGroupIcon';
 import PlusIcon from './icons/PlusIcon';
 import TrashIcon from './icons/TrashIcon';
+import WandIcon from './icons/WandIcon';
 
 interface InputPanelProps {
   referenceImages: ReferenceImage[];
@@ -22,6 +22,7 @@ interface InputPanelProps {
   isLoading: boolean;
   onGenerateStoryIdea: () => void;
   isIdeaLoading: boolean;
+  onOpenGenerateRefImageModal: () => void;
   t: TranslationKeys;
   language: Language;
 }
@@ -39,6 +40,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
   isLoading,
   onGenerateStoryIdea,
   isIdeaLoading,
+  onOpenGenerateRefImageModal,
   t,
   language,
 }) => {
@@ -130,7 +132,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
       <div>
         <div className="flex justify-between items-center mb-4">
           <label className="block text-lg font-semibold text-gray-200">
-            {t.referenceLocationsLabel}
+            {t.referenceToolsLabel}
           </label>
         </div>
         <div className="space-y-4">
@@ -158,13 +160,22 @@ const InputPanel: React.FC<InputPanelProps> = ({
                     ))}
                 </div>
             )}
-           <button
-            onClick={handleAddReferenceImage}
-            className="w-full flex items-center justify-center gap-x-2 text-sm font-semibold text-center text-[#5BEAFF] hover:text-cyan-200 py-2 border-2 border-dashed border-gray-600 hover:border-[#5BEAFF] rounded-lg transition-colors"
-          >
-           <PlusIcon className="w-5 h-5" />
-           {t.addReferenceImageButton}
-          </button>
+           <div className="flex items-center gap-x-2">
+             <button
+                onClick={handleAddReferenceImage}
+                className="w-full flex items-center justify-center gap-x-2 text-sm font-semibold text-center text-gray-400 hover:text-white py-2 border-2 border-dashed border-gray-600 hover:border-gray-500 rounded-lg transition-colors"
+             >
+               <PlusIcon className="w-5 h-5" />
+               {t.addReferenceImageButton}
+            </button>
+            <button
+                onClick={onOpenGenerateRefImageModal}
+                className="w-full flex items-center justify-center gap-x-2 text-sm font-semibold text-center text-[#5BEAFF] hover:text-cyan-200 py-2 border-2 border-dashed border-gray-600 hover:border-[#5BEAFF] rounded-lg transition-colors"
+            >
+               <WandIcon className="w-5 h-5" />
+               {t.generateReferenceImageButton}
+            </button>
+           </div>
         </div>
       </div>
 
@@ -251,6 +262,50 @@ const InputPanel: React.FC<InputPanelProps> = ({
               {VIDEO_STYLES.map(style => <option key={style.key} value={style.en}>{style[language]}</option>)}
             </select>
           </div>
+        <div className="mt-6">
+            <h4 className="text-lg font-semibold text-gray-200 mb-4">{t.dialogueSettingsLabel}</h4>
+            <div className="bg-[#0D0D0F] p-4 rounded-md border border-gray-700 space-y-4">
+                <label className="flex items-center justify-between cursor-pointer">
+                    <span className="font-medium text-gray-300">{t.dialogueToggleLabel}</span>
+                    <div className="relative">
+                        <input 
+                        type="checkbox" 
+                        checked={videoConfig.includeDialogue}
+                        onChange={(e) => handleConfigChange('includeDialogue', e.target.checked)}
+                        className="sr-only peer" 
+                        />
+                        <div className="w-11 h-6 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-[#0D0D0F] peer-focus:ring-[#5BEAFF] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#5BEAFF]"></div>
+                    </div>
+                </label>
+
+                {videoConfig.includeDialogue && (
+                <div className="border-t border-gray-600 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                    <label htmlFor="dialogueLanguage" className="block text-xs font-medium text-gray-500 mb-1">{t.dialogueLanguageLabel}</label>
+                    <select
+                        id="dialogueLanguage"
+                        className="w-full bg-[#0D0D0F] text-gray-300 p-3 rounded-md border border-gray-700 focus:ring-2 focus:ring-[#5BEAFF] focus:border-[#5BEAFF] transition text-sm"
+                        value={videoConfig.dialogueLanguage}
+                        onChange={(e) => handleConfigChange('dialogueLanguage', e.target.value)}
+                    >
+                        {DIALOGUE_LANGUAGES.map(lang => <option key={lang.key} value={lang.key}>{lang[language]}</option>)}
+                    </select>
+                    </div>
+                    <div>
+                    <label htmlFor="dialogueTone" className="block text-xs font-medium text-gray-500 mb-1">{t.dialogueToneLabel}</label>
+                    <input
+                        id="dialogueTone"
+                        type="text"
+                        className="w-full bg-[#0D0D0F] text-gray-300 p-3 rounded-md border border-gray-700 focus:ring-2 focus:ring-[#5BEAFF] focus:border-[#5BEAFF] transition text-sm"
+                        value={videoConfig.dialogueTone}
+                        onChange={(e) => handleConfigChange('dialogueTone', e.target.value)}
+                        placeholder={t.dialogueTonePlaceholder}
+                    />
+                    </div>
+                </div>
+                )}
+            </div>
+        </div>
       </div>
 
       <button

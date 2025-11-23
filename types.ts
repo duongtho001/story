@@ -40,6 +40,7 @@ export interface VideoConfig {
   style: string;
   includeDialogue: boolean;
   dialogueLanguage: string;
+  dialogueTone: string;
   format: 'trailer' | 'short' | 'longform';
 }
 
