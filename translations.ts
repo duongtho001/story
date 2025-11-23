@@ -31,20 +31,22 @@ const en = {
     suggestIdeaButton: "Suggest an Idea",
     suggestingIdeaButton: "Suggesting...",
     storyIdeaPlaceholder: "Describe your travel video idea. For example: A cinematic journey through the mountains of Ha Giang, Vietnam, focusing on winding roads, local markets, and epic landscapes. OR for Timelapse: Build a wooden stilt house on an empty plot of land, adding a garden and pond. OR for Blueprint: Assemble a futuristic motorcycle from a holographic blueprint, showing each part connecting automatically.",
-    generatedScriptLabel: "Generated Shot List",
+    generatedScriptLabel: "Generated Script",
     videoSettingsLabel: "Video Settings",
     durationLabel: "Approximate Video Duration (minutes)",
     durationPlaceholder: "e.g., 2",
     durationFeedback: (scenes: number, mins: number, secs: number) => `~${scenes} scenes (~${mins}m ${secs}s).`,
     videoFormatLabel: "Video Pace / Format",
     styleLabel: "Visual Style",
-    generateScriptButton: "Generate Shot List",
-    generatingScriptButton: "Generating Shot List...",
+    generateScriptButton: "Generate Script",
+    generatingScriptButton: "Generating Script...",
     generateStoryboardButton: "Generate Storyboard",
     generatingStoryboardButton: "Generating Storyboard...",
+    generatingStoryboardButtonWithProgress: (current: number, total: number) => `Generating Storyboard... (${current}/${total})`,
     dialogueSettingsLabel: "Dialogue & Voiceover Settings",
     dialogueToggleLabel: "Enable Dialogue / Voiceover",
     dialogueLanguageLabel: "Language",
+    dialogueGenderLabel: "Voice Gender",
     dialogueToneLabel: "Voice Tone",
     dialogueTonePlaceholder: "e.g., calm, energetic, mysterious",
     
@@ -62,7 +64,7 @@ const en = {
     generatingAllImagesButton: "Generating All...",
     downloadAllImagesButton: "Download All Images (.zip)",
     emptyTimelineTitle: "Your storyboard is empty.",
-    emptyTimelineDescription: "Provide a travel idea and generate a shot list to see your scenes here.",
+    emptyTimelineDescription: "Provide a travel idea and generate a script to see your scenes here.",
 
     // SceneCard.tsx
     sceneLabel: "Scene",
@@ -93,18 +95,18 @@ const en = {
     guideSteps: [
         { title: "Step 1: Set Video Style & Duration", description: "Choose a visual style for travel and the desired length of your video in minutes." },
         { title: "Step 2: Define the Travel Idea", description: "Write your travel concept or click 'Suggest an Idea' to have the AI generate one for you based on your chosen style." },
-        { title: "Step 3: Add Reference Images", description: "Upload one or more high-quality photos of the location or the style you want to emulate. These will guide the AI's image generation." },
-        { title: "Step 4: Generate Shot List", description: "Click 'Generate Shot List'. The AI will create a sequence of shots (like a script) based on your travel idea and duration." },
-        { title: "Step 5: Generate Storyboard", description: "With the shot list in place, click 'Generate Storyboard' to create a detailed, scene-by-scene breakdown with AI image prompts." },
+        { title: "Step 3: Add Reference Tools", description: "Upload one or more high-quality photos, blueprints, or sketches. These will guide the AI's script and image generation." },
+        { title: "Step 4: Generate Script", description: "Click 'Generate Script'. The AI will create a detailed script (a sequence of shots) based on your travel idea and duration." },
+        { title: "Step 5: Generate Storyboard", description: "With the script in place, click 'Generate Storyboard' to create a detailed, scene-by-scene breakdown with AI image prompts." },
         { title: "Step 6: Generate Scene Images", description: "In the timeline, select a reference image and generate visuals for each scene, either one by one or all at once using the batch tool." },
         { title: "Step 7: Review and Export", description: "Review your storyboard. You can edit the JSON prompts for any scene to fine-tune the visuals, then download all prompts or images." },
     ],
     guideProTipsTitle: "Pro-Tips",
     guideProTips: [
-        { title: "Quality References", description: "The better your reference images, the more consistent and beautiful your generated scenes will be. Use clear, well-lit photos." },
-        { title: "Iterate and Refine", description: "Don't be afraid to edit the shot list or prompts. The JSON prompts are fully editable to change camera angles, lighting, or motion." },
+        { title: "Quality References", description: "The better your reference tools (images, blueprints), the more consistent and beautiful your generated scenes will be." },
+        { title: "Iterate and Refine", description: "Don't be afraid to edit the script or prompts. The JSON prompts are fully editable to change camera angles, lighting, or motion." },
         { title: "Batch Generation", description: "To quickly visualize your entire storyboard, upload a primary reference image and use the 'Generate All Missing Images' button." },
-        { title: "Style Matters", description: "The initial style you choose influences everything from the shot list to the scene descriptions. Experiment to get unique results." },
+        { title: "Style Matters", description: "The initial style you choose influences everything from the script to the scene descriptions. Experiment to get unique results." },
         { title: "Link with 'State Transition'", description: "Keep `CAMERA` and `LIGHTING` settings consistent between scenes for a smooth cut. The next scene should start with the previous scene's settings before changing." },
         { title: "Use a Consistent 'Motif'", description: "Use a recurring element (e.g., light from a tablet, a specific color, an object) in consecutive scenes to create continuity." },
         { title: "The 'Cross-Anchor' Formula", description: "End scene A's prompt with an 'anchor' element and start scene B's prompt by referencing that same anchor for a strong connection." },
@@ -201,6 +203,7 @@ You may be provided with one or more reference images along with the text idea. 
 **DIALOGUE INSTRUCTIONS (CRITICAL):**
 The shot list MUST include dialogue or voiceover text where appropriate.
 - **Language:** The dialogue/voiceover MUST be written in the language specified by the user: **${config.dialogueLanguage}**.
+- **Gender:** The voiceover should be written for a **${config.dialogueGender}** voice.
 - **Tone:** The tone of the voice should be **${config.dialogueTone}**.
 - **Integration:** Write the dialogue or voiceover on a new line after the visual description for the relevant shot, prefixed with "VOICEOVER:" or a character name.`
           : 'The script must be purely visual, with no dialogue or voiceover. Describe only what is seen and how it is filmed.';
@@ -249,6 +252,7 @@ You are an expert mechanical design engineer. The user has provided a blueprint/
 `;
         }
 
+        const numberOfScenes = Math.round(config.duration / 8);
 
         return `You are a professional travel videographer and scriptwriter. Your task is to write a descriptive shot list based on a travel idea and video configuration.
 ${imageContextInstruction}
@@ -258,15 +262,12 @@ ${dialogueInstruction}
 
 **Pacing and Shot Count Guidance (CRITICAL):**
 You must adjust the number of shots in your list based on the video format to match the total duration.
-- **'trailer' (Fast-paced):** Generate a high number of short, impactful shots. Aim for approximately 10-15 distinct shots per minute of video.
-- **'short' (Standard pace):** Generate a moderate number of shots. Aim for approximately 7-10 distinct shots per minute of video.
-- **'longform' (Slow pace):** Generate fewer, more detailed and atmospheric shots. Aim for approximately 4-6 distinct shots per minute of video, describing longer camera movements for each.
-
-${styleSpecificInstruction}
+**You MUST generate EXACTLY ${numberOfScenes} distinct shots.** This is a strict requirement to match the requested video duration. Each shot will become one 8-second scene.
 
 **CRITICAL INSTRUCTION:** You MUST ensure the shot list contains enough UNIQUE content to fill the entire ${config.duration} seconds. Do not loop or repeat the same shot or location. The journey must expand and progress based on the theme.
 
-The output must be ONLY the shot list text. Do not include any introductory phrases, summaries, or explanations.`;
+The output must be ONLY the shot list text. Do not include any introductory phrases, summaries, or explanations.
+REMEMBER: The most critical rule is to generate EXACTLY ${numberOfScenes} shots. Do not generate more or less.`;
     },
 
     systemInstruction_generateScenes: (config: VideoConfig, isContinuation: boolean) => {
@@ -295,7 +296,7 @@ The output must be ONLY the shot list text. Do not include any introductory phra
         }
         
         const dialogueInstruction = config.includeDialogue
-          ? `- \`dialogue\`: (String) Extract the corresponding dialogue or voiceover for this scene from the shot list. The language must be **${config.dialogueLanguage}**. The tone should be consistent with **'${config.dialogueTone}'**. If there's no dialogue for this specific scene in the shot list, use an empty string "".`
+          ? `- \`dialogue\`: (String) Extract the corresponding dialogue or voiceover for this scene from the shot list. The language must be **${config.dialogueLanguage}**. The tone should be consistent with **'${config.dialogueTone}'** and suitable for a **'${config.dialogueGender}'** speaker. If there's no dialogue for this specific scene in the shot list, use an empty string "".`
           : `- \`dialogue\`: (String) MUST be an empty string "". No dialogue.`;
 
         let extraEnvInstruction = "";
@@ -344,7 +345,7 @@ The output must be ONLY the shot list text. Do not include any introductory phra
         } else if (isWarfare) {
             antiRepetition = "CRITICAL: Ensure the narrative action sequence PROGRESSES. Do not repeat actions or stay in one place. Each scene must advance the short story (e.g., from conflict, to objective, to resolution).";
         } else if (isBlueprint) {
-            antiRepetition = `CRITICAL: Ensure the assembly PROGRESSES LOGICALLY FROM THE INSIDE OUT. Do not repeat an assembly stage. Each scene must build upon the last, adding new components until the product is fully assembled. The 'description' for this scene must explicitly state which part is being added and how it connects to the components from the previous scene.`;
+            antiRepetition = `CRITICAL: Ensure the assembly PROGRESSES LOGICALLY FROM THE INSIDE OUT. Do not repeat an assembly stage. Each scene must build upon the last. The 'description' must use the 'Cross-Anchor' technique: it must explicitly state which new part is being added AND how it connects to the components from the previous scene's final state.`;
         }
 
 
@@ -355,6 +356,24 @@ ${pacingInstruction}
 
 **LANGUAGE REQUIREMENTS (ABSOLUTELY CRITICAL):**
 - ALL string values in the entire JSON output (description, style, camera, lighting, motion, audio, etc.) MUST be written in **English**. English is the required language for the video generation model.
+
+**Professional Cinematography & Editing Logic (ABSOLUTELY CRITICAL):**
+To create a professional and seamless video, you MUST adhere to the following filmmaking principles for EVERY scene transition. The starting frame of the current scene MUST logically and visually connect to the ending frame of the previous scene.
+
+1.  **"Cross-Anchor" Formula (MANDATORY):** This is the most important rule.
+    - The \`description\` of the PREVIOUS scene must end with a clear "anchor" (an object, a character's gaze, a specific motion).
+    - The \`description\` of the CURRENT scene MUST begin by referencing that exact anchor, creating an unbreakable link.
+    - Example:
+      - Scene 5 description ends: "...the character looks up towards the distant mountain peak." (Anchor: mountain peak)
+      - Scene 6 description begins: "From the mountain peak, the view reveals a winding river below."
+
+2.  **"State Transition" (Match Cut):** For smooth, almost invisible cuts, you should strongly prefer to carry over settings from the previous scene.
+    - The \`camera\` and \`lighting\` values for the CURRENT scene should, by default, be IDENTICAL to the previous scene's values.
+    - Only change them if the script explicitly calls for a dramatic shift. If you must change them, describe the transition within the \`motion\` or \`description\` fields (e.g., "the camera slowly zooms out," "the light gradually fades").
+
+3.  **Consistent "Motif":** Maintain a recurring visual or conceptual element across a sequence of scenes to tie them together. This could be a color, an object, a type of light, or a sound described in the \`audio\` field.
+
+4.  **Timeline Consistency:** Do not make abrupt changes in the time of day (e.g., from bright daylight to night) between consecutive scenes unless a clear and logical transition (like a time-lapse) is explicitly described in the script.
 
 **Coordinate System & Motion (CRITICAL):**
 You MUST describe camera and element motion using a coordinate grid.
@@ -383,8 +402,6 @@ ${dialogueInstruction}
 - \`fps\`: (Integer) Must be 24.
 - \`quality\`: (String) Must be "high".
 - \`negative_prompts\`: (Array of Strings) List things to avoid in **English**, like "people", "buildings", "text", "logos". ${extraNegativePrompts}
-
-**Unbroken Action Continuity (EXTREMELY IMPORTANT):** The starting frame of this scene SHOULD logically follow the ending frame of the previous scene to create a smooth video flow. For a timelapse, this means the construction state should progress logically.
 
 **IMPORTANT:** Ensure the final output is a single, perfectly formatted JSON object starting with \`{\` and ending with \`}\`, containing the 'scenes' array. Do not add any text or markdown before or after the JSON.`;
     },
@@ -422,20 +439,22 @@ const vi = {
     suggestIdeaButton: "Gợi ý ý tưởng",
     suggestingIdeaButton: "Đang gợi ý...",
     storyIdeaPlaceholder: "Mô tả ý tưởng video du lịch của bạn. VD: Một hành trình điện ảnh qua núi Hà Giang, tập trung vào đường đèo, chợ địa phương. HOẶC cho Timelapse: Xây một nhà sàn gỗ trên đất trống, thêm vườn rau và hồ cá. HOẶC cho Bản vẽ: Lắp ráp một chiếc xe máy tương lai từ bản vẽ hologram, hiển thị từng bộ phận tự động kết nối.",
-    generatedScriptLabel: "Danh sách cảnh quay đã tạo",
+    generatedScriptLabel: "Kịch bản đã tạo",
     videoSettingsLabel: "Cài đặt video",
     durationLabel: "Thời lượng video ước tính (phút)",
     durationPlaceholder: "VD: 2",
     durationFeedback: (scenes: number, mins: number, secs: number) => `~${scenes} phân cảnh (~${mins} phút ${secs} giây).`,
     videoFormatLabel: "Nhịp độ / Định dạng video",
     styleLabel: "Phong cách hình ảnh",
-    generateScriptButton: "Tạo danh sách cảnh quay",
-    generatingScriptButton: "Đang tạo danh sách...",
+    generateScriptButton: "Tạo kịch bản",
+    generatingScriptButton: "Đang tạo kịch bản...",
     generateStoryboardButton: "Tạo bảng phân cảnh",
     generatingStoryboardButton: "Đang tạo bảng phân cảnh...",
+    generatingStoryboardButtonWithProgress: (current: number, total: number) => `Đang tạo bảng phân cảnh... (${current}/${total})`,
     dialogueSettingsLabel: "Cài đặt Đối thoại & Lời dẫn",
     dialogueToggleLabel: "Bật Đối thoại / Lời dẫn",
     dialogueLanguageLabel: "Ngôn ngữ",
+    dialogueGenderLabel: "Giới tính Giọng nói",
     dialogueToneLabel: "Tông giọng",
     dialogueTonePlaceholder: "VD: bình tĩnh, năng động, bí ẩn",
     
@@ -453,7 +472,7 @@ const vi = {
     generatingAllImagesButton: "Đang tạo tất cả...",
     downloadAllImagesButton: "Tải tất cả hình ảnh (.zip)",
     emptyTimelineTitle: "Bảng phân cảnh của bạn trống.",
-    emptyTimelineDescription: "Cung cấp ý tưởng du lịch và tạo danh sách cảnh quay để xem các cảnh của bạn ở đây.",
+    emptyTimelineDescription: "Cung cấp ý tưởng du lịch và tạo một kịch bản để xem các cảnh của bạn ở đây.",
 
     // SceneCard.tsx
     sceneLabel: "Phân cảnh",
@@ -484,16 +503,16 @@ const vi = {
     guideSteps: [
         { title: "Bước 1: Cài đặt Phong cách & Thời lượng", description: "Chọn một phong cách hình ảnh du lịch và thời lượng video mong muốn." },
         { title: "Bước 2: Xác định Ý tưởng Du lịch", description: "Viết ý tưởng du lịch của bạn hoặc nhấp 'Gợi ý ý tưởng' để AI tạo giúp bạn." },
-        { title: "Bước 3: Thêm Ảnh tham chiếu", description: "Tải lên một hoặc nhiều ảnh chất lượng cao về địa điểm hoặc phong cách bạn muốn. Điều này sẽ hướng dẫn AI tạo hình ảnh." },
-        { title: "Bước 4: Tạo Danh sách cảnh quay", description: "Nhấp vào 'Tạo danh sách cảnh quay'. AI sẽ tạo một chuỗi các cảnh quay dựa trên ý tưởng và thời lượng của bạn." },
-        { title: "Bước 5: Tạo Bảng phân cảnh", description: "Khi đã có danh sách cảnh quay, hãy nhấp vào 'Tạo Bảng phân cảnh' để tạo ra các prompt chi tiết cho từng cảnh." },
+        { title: "Bước 3: Thêm Công cụ tham chiếu", description: "Tải lên một hoặc nhiều ảnh, bản vẽ chất lượng cao về địa điểm hoặc phong cách bạn muốn. Điều này sẽ hướng dẫn AI tạo kịch bản và hình ảnh." },
+        { title: "Bước 4: Tạo Kịch bản", description: "Nhấp vào 'Tạo kịch bản'. AI sẽ tạo ra một kịch bản chi tiết (danh sách các cảnh quay) dựa trên ý tưởng và thời lượng của bạn." },
+        { title: "Bước 5: Tạo Bảng phân cảnh", description: "Khi đã có kịch bản, hãy nhấp vào 'Tạo Bảng phân cảnh' để tạo ra các prompt chi tiết cho từng cảnh." },
         { title: "Bước 6: Tạo Hình ảnh Phân cảnh", description: "Trong dòng thời gian, chọn một ảnh tham chiếu và tạo hình ảnh cho từng cảnh, có thể tạo từng cái một hoặc hàng loạt." },
         { title: "Bước 7: Xem lại và Xuất", description: "Xem lại bảng phân cảnh của bạn. Bạn có thể chỉnh sửa prompt JSON để tinh chỉnh hình ảnh, sau đó tải xuống tất cả prompt hoặc hình ảnh." },
     ],
     guideProTipsTitle: "Mẹo chuyên nghiệp",
     guideProTips: [
-        { title: "Tham chiếu chất lượng", description: "Ảnh tham chiếu của bạn càng tốt, các cảnh được tạo ra sẽ càng nhất quán và đẹp mắt. Hãy sử dụng ảnh rõ nét, đủ sáng." },
-        { title: "Lặp lại và Tinh chỉnh", description: "Đừng ngại chỉnh sửa danh sách cảnh quay hoặc prompt. Prompt JSON hoàn toàn có thể chỉnh sửa để thay đổi góc máy, ánh sáng hoặc chuyển động." },
+        { title: "Tham chiếu chất lượng", description: "Công cụ tham chiếu (ảnh, bản vẽ) của bạn càng tốt, các cảnh được tạo ra sẽ càng nhất quán và đẹp mắt." },
+        { title: "Lặp lại và Tinh chỉnh", description: "Đừng ngại chỉnh sửa kịch bản hoặc prompt. Prompt JSON hoàn toàn có thể chỉnh sửa để thay đổi góc máy, ánh sáng hoặc chuyển động." },
         { title: "Tạo hàng loạt", description: "Để nhanh chóng hình dung toàn bộ kịch bản phân cảnh, hãy tải lên một ảnh tham chiếu chính và sử dụng nút 'Tạo tất cả hình ảnh còn thiếu'." },
         { title: "Phong cách rất quan trọng", description: "Phong cách ban đầu bạn chọn ảnh hưởng đến mọi thứ. Hãy thử nghiệm với các phong cách khác nhau để có kết quả độc đáo." },
         { title: "Liên kết bằng 'Trạng thái chuyển tiếp' (State Transition)", description: "Giữ nguyên `CAMERA` và `LIGHTING` giữa 2 cảnh để nối mượt. Cảnh sau nên bắt đầu bằng thông số của cảnh trước rồi mới chuyển đổi dần." },
@@ -544,6 +563,7 @@ Bạn có thể được cung cấp một hoặc nhiều hình ảnh tham chiế
 **HƯỚNG DẪN VỀ LỜI THOẠI (QUAN TRỌNG):**
 Danh sách cảnh quay PHẢI bao gồm lời thoại hoặc lời dẫn ở những chỗ phù hợp.
 - **Ngôn ngữ:** Lời thoại/lời dẫn PHẢI được viết bằng ngôn ngữ do người dùng chỉ định: **${config.dialogueLanguage}**.
+- **Giới tính:** Lời dẫn nên được viết cho một giọng **${config.dialogueGender}**.
 - **Tông giọng:** Tông giọng của lời nói phải là **${config.dialogueTone}**.
 - **Tích hợp:** Viết lời thoại hoặc lời dẫn trên một dòng mới sau phần mô tả hình ảnh cho cảnh quay có liên quan, có tiền tố là "VOICEOVER:" hoặc tên nhân vật.`
           : 'Kịch bản phải hoàn toàn bằng hình ảnh, không có đối thoại hoặc lời dẫn. Chỉ mô tả những gì được thấy và cách nó được quay.';
@@ -592,7 +612,8 @@ Bạn là một kỹ sư thiết kế cơ khí chuyên nghiệp. Người dùng 
 `;
         }
 
-
+        const numberOfScenes = Math.round(config.duration / 8);
+        
         return `Bạn là một nhà quay phim và biên kịch du lịch chuyên nghiệp. Nhiệm vụ của bạn là viết một danh sách cảnh quay mô tả dựa trên ý tưởng du lịch và cấu hình video.
 ${imageContextInstruction}
 Video cuối cùng sẽ dài khoảng ${config.duration} giây.
@@ -601,15 +622,12 @@ ${dialogueInstruction}
 
 **Hướng dẫn về Nhịp độ và Số lượng Cảnh quay (QUAN TRỌNG):**
 Bạn phải điều chỉnh số lượng cảnh quay trong danh sách của mình dựa trên định dạng video để khớp với tổng thời lượng.
-- **'trailer' (Nhịp độ nhanh):** Tạo ra số lượng lớn các cảnh quay ngắn, có tác động mạnh. Mục tiêu khoảng 10-15 cảnh quay riêng biệt cho mỗi phút video.
-- **'short' (Nhịp độ vừa):** Tạo ra số lượng cảnh quay vừa phải. Mục tiêu khoảng 7-10 cảnh quay riêng biệt cho mỗi phút video.
-- **'longform' (Nhịp độ chậm):** Tạo ra ít cảnh quay hơn, nhưng chi tiết và giàu không khí hơn. Mục tiêu khoảng 4-6 cảnh quay riêng biệt cho mỗi phút video, mô tả các chuyển động máy quay dài hơn cho mỗi cảnh.
-
-${styleSpecificInstruction}
+**Bạn BẮT BUỘC phải tạo ra CHÍNH XÁC ${numberOfScenes} cảnh quay riêng biệt.** Đây là yêu cầu nghiêm ngặt để khớp với thời lượng video yêu cầu. Mỗi cảnh quay sẽ trở thành một phân cảnh 8 giây.
 
 **CHỈ DẪN QUAN TRỌNG:** Bạn PHẢI đảm bảo danh sách cảnh quay chứa đủ nội dung ĐỘC ĐÁO để lấp đầy toàn bộ ${config.duration} giây. Không được lặp lại cảnh hoặc quay vòng lại cùng một địa điểm. Hành trình phải mở rộng và phát triển dựa trên chủ đề.
 
-Đầu ra chỉ được là văn bản danh sách cảnh quay. Không bao gồm bất kỳ cụm từ giới thiệu, tóm tắt hoặc giải thích nào.`;
+Đầu ra chỉ được là văn bản danh sách cảnh quay. Không bao gồm bất kỳ cụm từ giới thiệu, tóm tắt hoặc giải thích nào.
+NHỚ RẰNG: Quy tắc quan trọng nhất là tạo ra CHÍNH XÁC ${numberOfScenes} cảnh quay. Không tạo nhiều hơn hoặc ít hơn.`;
     },
 
     systemInstruction_generateScenes: (config: VideoConfig, isContinuation: boolean) => {
@@ -638,7 +656,7 @@ ${styleSpecificInstruction}
         }
 
         const dialogueInstruction = config.includeDialogue
-          ? `- \`dialogue\`: (String) Trích xuất lời thoại hoặc lời dẫn tương ứng cho cảnh này từ danh sách cảnh quay. Ngôn ngữ phải là **${config.dialogueLanguage}**. Tông giọng phải nhất quán với **'${config.dialogueTone}'**. Nếu không có lời thoại cho cảnh này trong danh sách cảnh quay, hãy sử dụng một chuỗi rỗng "".`
+          ? `- \`dialogue\`: (String) Trích xuất lời thoại hoặc lời dẫn tương ứng cho cảnh này từ danh sách cảnh quay. Ngôn ngữ phải là **${config.dialogueLanguage}**. Tông giọng phải nhất quán với **'${config.dialogueTone}'** và phù hợp với người nói có giới tính **'${config.dialogueGender}'**. Nếu không có lời thoại cho cảnh này trong danh sách cảnh quay, hãy sử dụng một chuỗi rỗng "".`
           : `- \`dialogue\`: (String) BẮT BUỘC là một chuỗi rỗng "". Không có lời thoại.`;
 
         let extraEnvInstruction = "";
@@ -687,7 +705,7 @@ ${styleSpecificInstruction}
         } else if (isWarfare) {
             antiRepetition = "CRITICAL: Ensure the narrative action sequence PROGRESSES. Do not repeat actions or stay in one place. Each scene must advance the short story (e.g., from conflict, to objective, to resolution).";
         } else if (isBlueprint) {
-            antiRepetition = `CRITICAL: Ensure the assembly PROGRESSES LOGICALLY FROM THE INSIDE OUT. Do not repeat an assembly stage. Each scene must build upon the last, adding new components until the product is fully assembled. The 'description' for this scene must explicitly state which part is being added and how it connects to the components from the previous scene.`;
+            antiRepetition = `CRITICAL: Ensure the assembly PROGRESSES LOGICALLY FROM THE INSIDE OUT. Do not repeat an assembly stage. Each scene must build upon the last. The 'description' must use the 'Cross-Anchor' technique: it must explicitly state which new part is being added AND how it connects to the components from the previous scene's final state.`;
         }
 
 
@@ -698,6 +716,24 @@ ${pacingInstruction}
 
 **YÊU CẦU VỀ NGÔN NGỮ (CỰC KỲ QUAN TRỌNG):**
 - TẤT CẢ các giá trị chuỗi trong toàn bộ đầu ra JSON (description, style, camera, lighting, motion, audio, v.v.) BẮT BUỘC phải được viết bằng **tiếng Anh (English)**. Tiếng Anh là ngôn ngữ bắt buộc cho mô hình tạo video.
+
+**Logic Dựng phim & Chuyển cảnh Chuyên nghiệp (CỰC KỲ QUAN TRỌNG):**
+Để tạo ra một video chuyên nghiệp và liền mạch, bạn BẮT BUỘC phải tuân thủ các nguyên tắc dựng phim sau đây cho MỌI chuyển cảnh. Khung hình bắt đầu của cảnh hiện tại PHẢI nối tiếp một cách logic và trực quan với khung hình kết thúc của cảnh trước đó.
+
+1.  **Công thức "Neo chéo" (Cross-Anchor) (BẮT BUỘC):** Đây là quy tắc quan trọng nhất.
+    - \`description\` của cảnh TRƯỚC đó phải kết thúc bằng một "neo" rõ ràng (một vật thể, ánh mắt của nhân vật, một chuyển động cụ thể).
+    - \`description\` của cảnh HIỆN TẠI PHẢI bắt đầu bằng cách tham chiếu đến chính xác "neo" đó, tạo ra một liên kết không thể phá vỡ.
+    - Ví dụ:
+      - Mô tả cảnh 5 kết thúc: "...nhân vật nhìn lên đỉnh núi xa xăm." (Neo: đỉnh núi)
+      - Mô tả cảnh 6 bắt đầu: "Từ đỉnh núi, khung cảnh cho thấy một dòng sông uốn lượn bên dưới."
+
+2.  **"Chuyển tiếp Trạng thái" (Match Cut):** Để có những cú cắt mượt mà, gần như vô hình, bạn nên ưu tiên giữ lại các cài đặt từ cảnh trước.
+    - Các giá trị \`camera\` và \`lighting\` của cảnh HIỆN TẠI, theo mặc định, phải GIỐNG HỆT với giá trị của cảnh trước.
+    - Chỉ thay đổi chúng nếu kịch bản yêu cầu một sự thay đổi đột ngột. Nếu phải thay đổi, hãy mô tả sự chuyển đổi trong trường \`motion\` hoặc \`description\` (ví dụ: "máy quay từ từ thu nhỏ," "ánh sáng mờ dần").
+
+3.  **"Motif" nhất quán:** Duy trì một yếu tố hình ảnh hoặc khái niệm lặp lại qua một chuỗi các cảnh để gắn kết chúng lại với nhau. Đây có thể là một màu sắc, một vật thể, một loại ánh sáng, hoặc một âm thanh được mô tả trong trường \`audio\`.
+
+4.  **Tính nhất quán của Dòng thời gian:** Không thực hiện các thay đổi đột ngột về thời gian trong ngày (ví dụ: từ ban ngày sang ban đêm) giữa các cảnh liên tiếp trừ khi có một sự chuyển tiếp rõ ràng và hợp lý (như time-lapse) được mô tả rõ trong kịch bản.
 
 **Hệ tọa độ & Chuyển động (CỰC KỲ QUAN TRỌNG):**
 Bạn PHẢI mô tả chuyển động của máy quay và các yếu tố bằng một lưới tọa độ.
@@ -726,8 +762,6 @@ ${dialogueInstruction}
 - \`fps\`: (Integer) Phải là 24.
 - \`quality\`: (String) Phải là "high".
 - \`negative_prompts\`: (Array of Strings) Liệt kê những thứ cần tránh bằng **tiếng Anh**, như "people", "buildings", "text", "logos". ${extraNegativePrompts}
-
-**Tính liên tục của hành động (CỰC KỲ QUAN TRỌNG):** Khung hình bắt đầu của cảnh này NÊN theo sau một cách hợp lý khung hình kết thúc của cảnh trước để tạo ra một luồng video mượt mà. Đối với timelapse, điều này có nghĩa là trạng thái xây dựng phải tiến triển một cách hợp lý.
 
 **QUAN TRỌНG:** Đảm bảo đầu ra cuối cùng là một đối tượng JSON duy nhất, được định dạng hoàn hảo, bắt đầu bằng \`{\` và kết thúc bằng \`}\`, chứa mảng 'scenes'. Không thêm bất kỳ văn bản hoặc markdown nào trước hoặc sau JSON.`;
     },

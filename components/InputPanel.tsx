@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { ReferenceImage, VideoConfig } from '../types';
-import { VIDEO_STYLES, VIDEO_FORMATS, DIALOGUE_LANGUAGES } from '../constants';
+import { VIDEO_STYLES, VIDEO_FORMATS, DIALOGUE_LANGUAGES, DIALOGUE_GENDERS } from '../constants';
 import SparklesIcon from './icons/SparklesIcon';
 import LightBulbIcon from './icons/LightBulbIcon';
 import Loader from './Loader';
@@ -25,6 +25,7 @@ interface InputPanelProps {
   onOpenGenerateRefImageModal: () => void;
   t: TranslationKeys;
   language: Language;
+  generationProgress: { current: number; total: number };
 }
 
 
@@ -43,6 +44,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
   onOpenGenerateRefImageModal,
   t,
   language,
+  generationProgress,
 }) => {
   const [minutesDisplay, setMinutesDisplay] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -279,7 +281,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
                 </label>
 
                 {videoConfig.includeDialogue && (
-                <div className="border-t border-gray-600 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="border-t border-gray-600 pt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                     <label htmlFor="dialogueLanguage" className="block text-xs font-medium text-gray-500 mb-1">{t.dialogueLanguageLabel}</label>
                     <select
@@ -290,6 +292,17 @@ const InputPanel: React.FC<InputPanelProps> = ({
                     >
                         {DIALOGUE_LANGUAGES.map(lang => <option key={lang.key} value={lang.key}>{lang[language]}</option>)}
                     </select>
+                    </div>
+                    <div>
+                        <label htmlFor="dialogueGender" className="block text-xs font-medium text-gray-500 mb-1">{t.dialogueGenderLabel}</label>
+                        <select
+                            id="dialogueGender"
+                            className="w-full bg-[#0D0D0F] text-gray-300 p-3 rounded-md border border-gray-700 focus:ring-2 focus:ring-[#5BEAFF] focus:border-[#5BEAFF] transition text-sm"
+                            value={videoConfig.dialogueGender}
+                            onChange={(e) => handleConfigChange('dialogueGender', e.target.value as VideoConfig['dialogueGender'])}
+                        >
+                            {DIALOGUE_GENDERS.map(gender => <option key={gender.key} value={gender.key}>{gender[language]}</option>)}
+                        </select>
                     </div>
                     <div>
                     <label htmlFor="dialogueTone" className="block text-xs font-medium text-gray-500 mb-1">{t.dialogueToneLabel}</label>
@@ -316,7 +329,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
         <SparklesIcon className="w-6 h-6" />
         {
           isGeneratingScript ? t.generatingScriptButton : 
-          isGeneratingStoryboard ? t.generatingStoryboardButton :
+          isGeneratingStoryboard ? t.generatingStoryboardButtonWithProgress(generationProgress.current, generationProgress.total) :
           generatedScript ? t.generateStoryboardButton : 
           t.generateScriptButton
         }

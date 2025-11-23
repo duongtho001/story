@@ -28,6 +28,7 @@ const App: React.FC = () => {
     includeDialogue: false,
     dialogueLanguage: 'vi',
     dialogueTone: '',
+    dialogueGender: 'any',
     format: 'trailer',
   });
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -91,6 +92,7 @@ const App: React.FC = () => {
         includeDialogue: false,
         dialogueLanguage: 'vi',
         dialogueTone: '',
+        dialogueGender: 'any',
         format: 'trailer',
     });
     setError(null);
@@ -448,6 +450,7 @@ const App: React.FC = () => {
             onOpenGenerateRefImageModal={() => setIsGenerateRefImageModalVisible(true)}
             t={t}
             language={language}
+            generationProgress={generationProgress}
           />
           <SceneTimeline
             scenes={scenes}

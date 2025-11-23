@@ -268,7 +268,7 @@ export const generateScenePrompts = async (
     You have already generated ${lastSceneNumber} scenes. Please continue generating the storyboard starting from scene number ${lastSceneNumber + 1}.
 
     **Previously Generated Scenes (for context only, do not repeat them):**
-    ${JSON.stringify(existingScenes.slice(-5))} 
+    ${JSON.stringify(existingScenes.slice(-10))} 
     `
     : 'Please generate the video scene prompts based on the following details.';
 

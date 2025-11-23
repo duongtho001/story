@@ -25,3 +25,9 @@ export const DIALOGUE_LANGUAGES = [
   { key: 'vi', en: 'Vietnamese', vi: 'Tiếng Việt' },
   { key: 'en', en: 'English', vi: 'English' },
 ];
+
+export const DIALOGUE_GENDERS = [
+  { key: 'any', en: 'Any', vi: 'Bất kỳ' },
+  { key: 'male', en: 'Male', vi: 'Nam' },
+  { key: 'female', en: 'Female', vi: 'Nữ' },
+];

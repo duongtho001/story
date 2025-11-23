@@ -41,6 +41,7 @@ export interface VideoConfig {
   includeDialogue: boolean;
   dialogueLanguage: string;
   dialogueTone: string;
+  dialogueGender: 'male' | 'female' | 'any';
   format: 'trailer' | 'short' | 'longform';
 }
 
